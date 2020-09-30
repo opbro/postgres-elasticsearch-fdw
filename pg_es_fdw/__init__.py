@@ -37,9 +37,9 @@ class ElasticsearchFDW(ForeignDataWrapper):
         self.scroll_size = int(options.pop("scroll_size", "1000"))
         self.scroll_duration = options.pop("scroll_duration", "10m")
         self._rowid_column = options.pop("rowid_column", "id")
+        self.verify_ssl = self._get_bool_value(options.pop('verify_ssl', 'True'))
         username = options.pop("username", None)
         password = options.pop("password", None)
-
         if ELASTICSEARCH_VERSION[0] >= 7:
             self.path = "/{index}".format(index=self.index)
             self.arguments = {"index": self.index}
@@ -47,7 +47,7 @@ class ElasticsearchFDW(ForeignDataWrapper):
             self.path = "/{index}/{doc_type}".format(
                 index=self.index, doc_type=self.doc_type
             )
-            self.arguments = {"index": self.index, "doc_type": self.doc_type}
+            self.arguments = {"index": self.index, "doc_type": self.doc_type, "verify_ssl": self.verify_ssl}
 
         if (username is None) != (password is None):
             raise ValueError("Must provide both username and password")
@@ -231,6 +231,11 @@ class ElasticsearchFDW(ForeignDataWrapper):
             ),
             self.default_sort
         )
+
+    def _get_bool_value(self, value):
+        if value.lower() == 'false':
+            return False
+        return True
 
     def _convert_response_row(self, row_data, columns, query, sort):
         return_dict = {
